@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cqjtu-R · FakeGPS 模拟定位</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 40%, #a5d6a7 100%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+/* 背景光斑 */
+body::before, body::after {
+  content:''; position: fixed; border-radius: 50%; filter: blur(80px); z-index:0;
+}
+body::before { width:400px; height:400px; background:#81c784; top:-100px; left:-100px; opacity:.5; }
+body::after { width:350px; height:350px; background:#66bb6a; bottom:-80px; right:-80px; opacity:.4; }
+
+/* 主卡片 */
+.card {
+  position: relative; z-index:1;
+  width: 100%; max-width: 420px;
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(30px) saturate(1.5);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,0.5);
+  box-shadow: 0 8px 32px rgba(76,175,80,0.15), inset 0 1px 0 rgba(255,255,255,0.6);
+  padding: 40px 24px 28px;
+}
+
+/* 头像 */
+.avatar-wrap { text-align:center; margin-bottom: 24px; }
+.avatar {
+  width: 88px; height: 88px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.7);
+  box-shadow: 0 4px 16px rgba(76,175,80,0.25);
+  object-fit: cover;
+}
+.app-name {
+  margin-top: 12px; font-size: 20px; font-weight: 700;
+  color: #2e7d32; letter-spacing: 1px;
+}
+.app-sub {
+  font-size: 13px; color: #558b2f; margin-top: 4px; opacity: .8;
+}
+
+/* 文件列表 */
+.file-list { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+.file-row {
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 18px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.file-row:hover { background: rgba(255,255,255,0.6); transform: translateY(-1px); }
+.file-row:active { transform: scale(.98); }
+.file-icon {
+  width: 42px; height: 42px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: #fff; flex-shrink: 0;
+}
+.file-icon.apk { background: linear-gradient(135deg,#66bb6a,#43a047); }
+.file-icon.kml { background: linear-gradient(135deg,#81c784,#66bb6a); }
+.file-icon.doc { background: linear-gradient(135deg,#a5d6a7,#81c784); }
+.file-info { flex:1; min-width:0; }
+.file-name { font-size:14px; font-weight:600; color:#1b5e20; }
+.file-desc { font-size:12px; color:#558b2f; margin-top:2px; }
+.file-arrow { color:#81c784; font-size:18px; }
+
+/* 底部按钮 */
+.dl-btn {
+  display: block; width: 100%; margin-top: 20px;
+  padding: 14px; border: none; border-radius: 16px;
+  background: linear-gradient(135deg, #43a047, #2e7d32);
+  color: #fff; font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all .2s;
+  box-shadow: 0 4px 12px rgba(46,125,50,0.3);
+  text-decoration: none; text-align: center;
+}
+.dl-btn:hover { box-shadow: 0 6px 16px rgba(46,125,50,0.4); }
+.dl-btn:active { transform: scale(.98); }
+
+/* ===== 视图切换 ===== */
+.view { display: none; }
+.view.active { display: block; }
+
+/* 返回按钮 */
+.back-btn {
+  background: none; border: none; color: #2e7d32;
+  font-size: 14px; cursor: pointer; padding: 4px 0;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 4px;
+}
+
+/* 下载详情页 */
+.dl-detail { text-align: center; padding: 10px 0; }
+.dl-detail .big-icon {
+  width: 72px; height: 72px; border-radius: 20px;
+  margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;
+  font-size: 32px; color: #fff;
+}
+.dl-detail h2 { font-size: 18px; color: #1b5e20; margin-bottom: 6px; }
+.dl-detail p { font-size: 13px; color: #558b2f; margin-bottom: 20px; }
+
+/* 阅读页 markdown */
+.reader {
+  background: rgba(255,255,255,0.5);
+  border-radius: 16px; padding: 20px;
+  max-height: 60vh; overflow-y: auto;
+  font-size: 14px; line-height: 1.7; color: #2e3d2e;
+}
+.reader h1 { font-size: 20px; color: #1b5e20; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 2px solid #a5d6a7; }
+.reader h2 { font-size: 16px; color: #2e7d32; margin: 18px 0 8px; }
+.reader h3 { font-size: 14px; color: #388e3c; margin: 14px 0 6px; }
+.reader p { margin: 6px 0; }
+.reader ul, .reader ol { margin: 6px 0 6px 20px; }
+.reader li { margin: 3px 0; }
+.reader code {
+  background: rgba(129,199,132,0.2); padding: 1px 6px; border-radius: 4px;
+  font-family: Consolas, monospace; font-size: 13px; color: #1b5e20;
+}
+.reader pre {
+  background: rgba(27,94,32,0.08); padding: 12px; border-radius: 10px;
+  overflow-x: auto; margin: 10px 0;
+}
+.reader pre code { background: none; padding: 0; }
+.reader a { color: #43a047; }
+
+/* 全屏弹窗 */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(46,125,50,0.15);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(30px);
+  border-radius: 24px; padding: 32px 28px;
+  max-width: 360px; width: 100%;
+  border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 12px 40px rgba(76,175,80,0.2);
+  text-align: center;
+  animation: pop .3s ease;
+}
+@keyframes pop { from { transform: scale(.9); opacity:0; } to { transform: scale(1); opacity:1; } }
+.modal h3 { color: #2e7d32; font-size: 17px; margin-bottom: 10px; }
+.modal p { color: #558b2f; font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+.modal .src-link {
+  display: inline-block; background: rgba(129,199,132,0.25);
+  padding: 6px 14px; border-radius: 10px; font-size: 12px;
+  color: #2e7d32; word-break: break-all; margin-bottom: 18px;
+}
+.modal button {
+  width: 100%; padding: 12px; border: none; border-radius: 14px;
+  background: linear-gradient(135deg,#43a047,#2e7d32); color:#fff;
+  font-size: 14px; font-weight:600; cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<!-- 全屏弹窗 -->
+<div class="modal-overlay" id="welcomeModal">
+  <div class="modal">
+    <h3>项目声明</h3>
+    <p>本页面提供的 FakeGPS 为开源应用，仅做打包分享，未修改应用本体。</p>
+    <div class="src-link">项目地址github.com/Warren-Falk/FakeGPS</div>
+    <div class="src-link">本网站源代码和相关文件已上传至<br>https://github.com/yeyouxiutx666/CqjtuRun</div>
+    <button onclick="closeModal()">我知道了</button>
+  </div>
+</div>
+
+<div class="card">
+
+  <!-- ===== 视图：主页 ===== -->
+  <div class="view active" id="view-main">
+    <div class="avatar-wrap">
+      <img src="avatar.png" class="avatar" alt="avatar">
+      <div class="app-name">cqjtu-R</div>
+      <div class="app-sub">FakeGPS 模拟定位工具包</div>
+      <div style="margin-top:8px; font-size:12px; color:#558b2f; opacity:.8;">QQ：196205872</div>
+    </div>
+
+    <div class="file-list">
+      <div class="file-row" onclick="showDownload('apk')">
+        <div class="file-icon apk">APK</div>
+        <div class="file-info">
+          <div class="file-name">FakeGPS.apk</div>
+          <div class="file-desc">原版模拟定位应用 · 5.4 MB</div>
+        </div>
+        <div class="file-arrow">›</div>
+      </div>
+
+      <div class="file-row" onclick="showDownload('kml')">
+        <div class="file-icon kml">KML</div>
+        <div class="file-info">
+          <div class="file-name">cqjtu_loop.kml</div>
+          <div class="file-desc">科学城校区田径场路线 · WGS-84</div>
+        </div>
+        <div class="file-arrow">›</div>
+      </div>
+
+      <div class="file-row" onclick="showReader()">
+        <div class="file-icon doc">📄</div>
+        <div class="file-info">
+          <div class="file-name">使用说明</div>
+          <div class="file-desc">安装步骤 · Root说明 · KML编写教程</div>
+        </div>
+        <div class="file-arrow">›</div>
+      </div>
+    </div>
+
+    <button class="dl-btn" onclick="downloadAll()">下载全部文件</button>
+  </div>
+
+  <!-- ===== 视图：下载详情 ===== -->
+  <div class="view" id="view-download">
+    <button class="back-btn" onclick="showMain()">‹ 返回</button>
+    <div class="dl-detail">
+      <div class="big-icon" id="dlIcon"></div>
+      <h2 id="dlName"></h2>
+      <p id="dlDesc"></p>
+      <a class="dl-btn" id="dlLink" download>立即下载</a>
+    </div>
+  </div>
+
+  <!-- ===== 视图：阅读页 ===== -->
+  <div class="view" id="view-reader">
+    <button class="back-btn" onclick="showMain()">‹ 返回</button>
+    <div class="reader" id="readerContent"></div>
+  </div>
+
+</div>
+
+<script>
+function closeModal() {
+  document.getElementById('welcomeModal').style.display = 'none';
+}
+function showMain() {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-main').classList.add('active');
+}
+function showDownload(type) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-download').classList.add('active');
+  const icon = document.getElementById('dlIcon');
+  if (type === 'apk') {
+    icon.style.background = 'linear-gradient(135deg,#66bb6a,#43a047)';
+    icon.textContent = 'APK';
+    document.getElementById('dlName').textContent = 'FakeGPS.apk';
+    document.getElementById('dlDesc').textContent = '原版模拟定位应用，安装后需在开发者选项设为模拟位置应用';
+    document.getElementById('dlLink').href = 'FakeGPS.apk';
+  } else {
+    icon.style.background = 'linear-gradient(135deg,#81c784,#66bb6a)';
+    icon.textContent = 'KML';
+    document.getElementById('dlName').textContent = 'cqjtu_loop.kml';
+    document.getElementById('dlDesc').textContent = '重庆交通大学科学城校区田径场跑道路线，14个坐标点闭环';
+    document.getElementById('dlLink').href = 'cqjtu_loop.kml';
+  }
+}
+function downloadAll() {
+  const a1 = document.createElement('a');
+  a1.href = 'FakeGPS.apk'; a1.download = '';
+  document.body.appendChild(a1); a1.click(); a1.remove();
+  setTimeout(() => {
+    const a2 = document.createElement('a');
+    a2.href = 'cqjtu_loop.kml'; a2.download = '';
+    document.body.appendChild(a2); a2.click(); a2.remove();
+  }, 300);
+}
+
+// Markdown 渲染
+const md = `# FakeGPS 模拟定位工具
+
+## 出处
+本文件夹中的 FakeGPS.apk 为原版开源应用，来源：
+https://github.com/Warren-Falk/FakeGPS
+（模拟位置工具，通过 Android 模拟位置 API 输出假 GPS 坐标）
+
+我们仅提供该 APK 及使用说明，未修改应用本体。
+
+## 包含文件
+- **FakeGPS.apk** — 原版模拟定位应用
+- **cqjtu_loop.kml** — 重庆交通大学科学城校区田径场路线示例（WGS-84坐标）
+
+## 安装与使用
+1. 安装 FakeGPS.apk
+2. 打开后授予定位权限
+3. 设置 → 开发者选项 → 选择模拟位置应用 → 选 FakeGPS
+4. 把 cqjtu_loop.kml 传到手机存储（如 Download 目录）
+5. 打开 FakeGPS → 点"浏览"选 cqjtu_loop.kml
+6. 参数设置：
+   - 速度：2.5 m/s
+   - 重复次数：999（无限循环）
+   - 广播间隔：1秒（默认）
+   - 海拔：不填
+   - 加速度：不填
+7. 点开始，切到跑步小程序即可
+
+## 是否需要 Root
+
+### 不需要 Root
+直接用就行。大部分校园跑小程序不检测模拟定位，能正常记录。
+
+### 需要 Root 的情况
+如果小程序提示"位置异常"或判定作弊，说明检测到了模拟定位。
+解决：手机 Root + Magisk + LSPosed + HideMockLocation 模块，
+作用域勾选系统框架和微信，重启后模拟定位痕迹会被隐藏。
+
+## 如何自己编写 KML 文件
+
+KML 是 Google Earth 的地标格式，FakeGPS 读取其中的坐标点依次移动。
+
+### 格式模板
+\`\`\`xml
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>我的路线</name>
+    <Placemark>
+      <name>起点</name>
+      <Point>
+        <coordinates>106.316317,29.422810,0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>
+\`\`\`
+
+### 获取坐标方法
+1. 打开高德地图网页版（ditu.amap.com）
+2. 找到你要跑步的位置，右键点"这是哪里"可以看到坐标
+3. 注意：高德地图用的是 GCJ-02 坐标系，FakeGPS 用的是 WGS-84
+4. 如果发现路线偏移几百米，说明坐标系没转换
+
+### 坐标格式说明
+- 每个点格式：经度,纬度,海拔
+- 经度在前，纬度在后（注意顺序别搞反）
+- 海拔填0即可
+- 想绕圈跑就把最后一个点设回第一个点形成闭环
+
+## 常见问题：路线跑到河里去了
+
+如果你在 FakeGPS 里选了 KML 后，打开跑步小程序发现位置不在跑道上，
+而是在河里、路上或者偏了几百米，这是坐标系问题。
+
+### 原因
+- 高德地图、腾讯地图用的是 GCJ-02 坐标系（火星坐标）
+- Android GPS 硬件输出的是 WGS-84 坐标系
+- 两者在国内会有几百米的系统性偏移
+- 直接拿高德坐标塞进 KML，位置就会偏到河里
+
+### 解决
+1. 先在高德地图上沿着跑道取一圈坐标
+2. 用 GCJ-02 → WGS-84 转换工具转换每个点
+3. 转换后的坐标再写入 KML
+4. 转换后路线应该正好落在跑道上
+
+### 验证方法
+打开小程序跑10秒，看地图上蓝色轨迹是否画在粉色跑道上。
+如果轨迹在跑道上但距离不对，那是小程序自己的距离计算方式不同，
+需要把 KML 的点间距拉大一些。`;
+
+function renderMD(text) {
+  const lines = text.split('\n');
+  let html = '', inCode = false, codeLang = '';
+  for (let line of lines) {
+    if (line.trim().startsWith('```')) {
+      if (inCode) { html += '</code></pre>'; inCode = false; }
+      else { html += '<pre><code>'; inCode = true; codeLang = line.trim().slice(3); }
+      continue;
+    }
+    if (inCode) { html += escapeHtml(line) + '\n'; continue; }
+    if (line.startsWith('# ')) html += `<h1>${inline(line.slice(2))}</h1>`;
+    else if (line.startsWith('## ')) html += `<h2>${inline(line.slice(3))}</h2>`;
+    else if (line.startsWith('### ')) html += `<h3>${inline(line.slice(4))}</h3>`;
+    else if (/^\d+\. /.test(line)) html += `<p>${inline(line)}</p>`;
+    else if (line.startsWith('- ')) html += `<p>• ${inline(line.slice(2))}</p>`;
+    else if (line.trim() === '') html += '';
+    else html += `<p>${inline(line)}</p>`;
+  }
+  return html;
+}
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function inline(s) {
+  s = escapeHtml(s);
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/`(.+?)`/g, '<code>$1</code>');
+  s = s.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+  return s;
+}
+function showReader() {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-reader').classList.add('active');
+  document.getElementById('readerContent').innerHTML = renderMD(md);
+}
+</script>
+</body>
+</html>
