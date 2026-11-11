@@ -185,7 +185,7 @@ body::after { width:350px; height:350px; background:#66bb6a; bottom:-80px; right
   <!-- ===== 视图：主页 ===== -->
   <div class="view active" id="view-main">
     <div class="avatar-wrap">
-      <img src="avatar.png" class="avatar" alt="avatar" style="cursor:pointer;" onclick="window.open('https://github.com/yeyouxiutx666/CqjtuRun','_blank')">
+    <img src="avatar.png" class="avatar" alt="avatar" style="cursor:pointer;" onclick="window.open('https://github.com/yeyouxiutx666/CqjtuRun','_blank')">      
       <div class="app-name">cqjtu-R</div>
       <div class="app-sub">FakeGPS 模拟定位工具包</div>
       <div style="margin-top:8px; font-size:12px; color:#558b2f; opacity:.8;">QQ：196205872</div>
@@ -206,6 +206,33 @@ body::after { width:350px; height:350px; background:#66bb6a; bottom:-80px; right
         <div class="file-info">
           <div class="file-name">cqjtu_loop.kml</div>
           <div class="file-desc">科学城校区田径场路线 · WGS-84</div>
+        </div>
+        <div class="file-arrow">›</div>
+      </div>
+
+      <div class="file-row" onclick="showDownload('magisk')">
+        <div class="file-icon apk">MAGISK</div>
+        <div class="file-info">
+          <div class="file-name">Magisk.apk</div>
+          <div class="file-desc">Root工具 · 仅被检测时需要 · 11.9 MB</div>
+        </div>
+        <div class="file-arrow">›</div>
+      </div>
+
+      <div class="file-row" onclick="showDownload('lsposed')">
+        <div class="file-icon kml">ZIP</div>
+        <div class="file-info">
+          <div class="file-name">LSPosed.zip</div>
+          <div class="file-desc">Xposed框架 · Magisk里刷入 · 2.3 MB</div>
+        </div>
+        <div class="file-arrow">›</div>
+      </div>
+
+      <div class="file-row" onclick="showDownload('hml')">
+        <div class="file-icon apk">HML</div>
+        <div class="file-info">
+          <div class="file-name">HideMockLocation.apk</div>
+          <div class="file-desc">隐藏模拟定位痕迹 · LSPosed模块 · 11 KB</div>
         </div>
         <div class="file-arrow">›</div>
       </div>
@@ -260,6 +287,24 @@ function showDownload(type) {
     document.getElementById('dlName').textContent = 'FakeGPS.apk';
     document.getElementById('dlDesc').textContent = '原版模拟定位应用，安装后需在开发者选项设为模拟位置应用';
     document.getElementById('dlLink').href = 'FakeGPS.apk';
+  } else if (type === 'magisk') {
+    icon.style.background = 'linear-gradient(135deg,#388e3c,#1b5e20)';
+    icon.textContent = 'ROOT';
+    document.getElementById('dlName').textContent = 'Magisk.apk';
+    document.getElementById('dlDesc').textContent = '仅当小程序检测到模拟定位时才需要，用于配合LSPosed隐藏模拟位置痕迹';
+    document.getElementById('dlLink').href = 'Magisk.apk';
+  } else if (type === 'lsposed') {
+    icon.style.background = 'linear-gradient(135deg,#2e7d32,#1b5e20)';
+    icon.textContent = 'ZIP';
+    document.getElementById('dlName').textContent = 'LSPosed.zip';
+    document.getElementById('dlDesc').textContent = 'Xposed框架模块，在Magisk模块页刷入此zip后重启';
+    document.getElementById('dlLink').href = 'LSPosed-v1.9.2-7024-zygisk-release.zip';
+  } else if (type === 'hml') {
+    icon.style.background = 'linear-gradient(135deg,#43a047,#2e7d32)';
+    icon.textContent = 'HML';
+    document.getElementById('dlName').textContent = 'HideMockLocation.apk';
+    document.getElementById('dlDesc').textContent = '安装后在LSPosed里启用，作用域勾选系统框架和微信，隐藏模拟定位痕迹';
+    document.getElementById('dlLink').href = 'HideMockLocation.apk';
   } else {
     icon.style.background = 'linear-gradient(135deg,#81c784,#66bb6a)';
     icon.textContent = 'KML';
@@ -269,14 +314,14 @@ function showDownload(type) {
   }
 }
 function downloadAll() {
-  const a1 = document.createElement('a');
-  a1.href = 'FakeGPS.apk'; a1.download = '';
-  document.body.appendChild(a1); a1.click(); a1.remove();
-  setTimeout(() => {
-    const a2 = document.createElement('a');
-    a2.href = 'cqjtu_loop.kml'; a2.download = '';
-    document.body.appendChild(a2); a2.click(); a2.remove();
-  }, 300);
+  const files = ['FakeGPS.apk','cqjtu_loop.kml','Magisk.apk','LSPosed-v1.9.2-7024-zygisk-release.zip','HideMockLocation.apk'];
+  files.forEach((f,i) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = f; a.download = '';
+      document.body.appendChild(a); a.click(); a.remove();
+    }, i*300);
+  });
 }
 
 // Markdown 渲染
@@ -316,6 +361,13 @@ https://github.com/Warren-Falk/FakeGPS
 如果小程序提示"位置异常"或判定作弊，说明检测到了模拟定位。
 解决：手机 Root + Magisk + LSPosed + HideMockLocation 模块，
 作用域勾选系统框架和微信，重启后模拟定位痕迹会被隐藏。
+
+所需文件（本页全部提供）：
+- **Magisk.apk** — 获取 Root 权限
+- **LSPosed.zip** — 在 Magisk 模块页刷入，Xposed 框架
+- **HideMockLocation.apk** — LSPosed 模块，隐藏模拟位置痕迹
+
+步骤：安装 Magisk → 修补 boot 镜像 Root → Magisk 里刷入 LSPosed.zip → 重启 → 安装 HideMockLocation.apk → LSPosed 里启用模块并勾选作用域（系统框架 + 微信/企业微信）→ 重启手机。
 
 ## 如何自己编写 KML 文件
 
