@@ -10,6 +10,9 @@ https://github.com/Warren-Falk/FakeGPS
 ## 包含文件
 - FakeGPS.apk — 原版模拟定位应用
 - cqjtu_loop.kml — 重庆交通大学科学城校区田径场路线示例（WGS-84坐标）
+- Magisk.apk — Root工具，仅被检测时需要
+- LSPosed-v1.9.2-7024-zygisk-release.zip — Xposed框架，Magisk里刷入
+- HideMockLocation.apk — 隐藏模拟定位痕迹的LSPosed模块
 
 ## 安装与使用
 1. 安装 FakeGPS.apk
@@ -34,6 +37,20 @@ https://github.com/Warren-Falk/FakeGPS
 如果小程序提示"位置异常"或判定作弊，说明检测到了模拟定位。
 解决：手机 Root + Magisk + LSPosed + HideMockLocation 模块，
 作用域勾选系统框架和微信，重启后模拟定位痕迹会被隐藏。
+
+所需文件（本文件夹全部提供）：
+- Magisk.apk — 获取 Root 权限
+- LSPosed-v1.9.2-7024-zygisk-release.zip — 在 Magisk 模块页刷入
+- HideMockLocation.apk — LSPosed 模块
+
+步骤：
+1. 安装 Magisk.apk
+2. 修补 boot 镜像完成 Root（需先解锁 BL）
+3. 在 Magisk 模块里刷入 LSPosed.zip，重启
+4. 安装 HideMockLocation.apk
+5. 打开 LSPosed，启用 HideMockLocation 模块
+6. 作用域勾选：系统框架 + 微信（或企业微信）
+7. 重启手机
 
 ## 如何自己编写 KML 文件
 
